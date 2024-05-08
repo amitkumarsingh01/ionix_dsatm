@@ -143,13 +143,9 @@
         const feeds = data.feeds;
 
         feeds.forEach(feed => {
-            const createdAt = new Date(feed.created_at);
-            const date = createdAt.toLocaleDateString();
-            const time = createdAt.toLocaleTimeString();
-
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${date}, ${time}</td>
+                <td>${feed.created_at}</td>
                 <td>${feed.field1}</td>
                 <td>${feed.field2}</td>
                 <td>${feed.field3}</td>
@@ -161,11 +157,10 @@
             dataBody.appendChild(row);
             
             // Generate random data for graph
-            const xParam = `${date}, ${time}`;
+            const xParam = feed.created_at;
             const yParam = Math.floor(Math.random() * (200 - 180 + 1)) + 180;
             generateGraph(xParam, yParam);
         });
-
 
         // Generate graph initially
         generateGraph('created_at', 'field1'); // You can change default parameters here if needed
@@ -173,16 +168,14 @@
     .catch(error => console.error('Error fetching data:', error));
 
 
-
     generateGraphBtn.addEventListener('click', () => {
-    const xParam = xParamSelect.value;
-    const yParam = yParamSelect.value;
-    if (chartInstance) {
-        chartInstance.destroy(); // Destroy previous chart instance if exists
-    }
+        const xParam = xParamSelect.value;
+        const yParam = yParamSelect.value;
+        if (chartInstance) {
+            chartInstance.destroy(); // Destroy previous chart instance if exists
+        }
         generateGraph(xParam, yParam);
     });
-
 
     saveGraphBtn.addEventListener('click', () => {
         const canvas = document.getElementById('graphCanvas');
@@ -258,71 +251,63 @@
             }, 2000);
         }, 2000);
     }
+
     function generateGraph(xParam, yParam) {
-    const ctx = document.getElementById('graphCanvas').getContext('2d'); // Get 2d context
-    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas
+        const ctx = document.getElementById('graphCanvas').getContext('2d'); // Get 2d context
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas
 
-    fetch('https://api.thingspeak.com/channels/2540859/feeds.json?results=20')
-        .then(response => response.json())
-        .then(data => {
-            const feeds = data.feeds;
+        fetch('https://api.thingspeak.com/channels/2540859/feeds.json?results=20')
+            .then(response => response.json())
+            .then(data => {
+                const feeds = data.feeds;
 
-            const xLabel = getLabel(xParam);
-            const yLabel = getLabel(yParam);
+                const xLabel = getLabel(xParam);
+                const yLabel = getLabel(yParam);
 
-            const xValues = feeds.map(feed => {
-                if (xParam === 'created_at') {
-                    return formatDateTime(feed[xParam]);
-                } else {
-                    return feed[xParam];
-                }
-            });
-
-            chartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: xValues,
-                    datasets: [{
-                        label: yLabel,
-                        data: feeds.map(feed => yParam !== 'field7' ? parseFloat(feed[yParam], 10) : Math.floor(Math.random() * (200 - 180 + 1)) + 180),
-                        borderColor: 'cyan',
-                        borderWidth: 2,
-                        fill: false
-                    }]
-                },
-                options: {
-                    scales: {
-                        x: {
-                            title: {
-                                display: true,
-                                text: xLabel,
-                                color: 'cyan'
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: feeds.map(feed => feed[xParam]),
+                        datasets: [{
+                            label: yLabel,
+                            data: feeds.map(feed => yParam !== 'field7' ? parseFloat(feed[yParam], 10) : Math.floor(Math.random() * (200 - 180 + 1)) + 180),
+                            borderColor: 'cyan',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: xLabel,
+                                    color: 'cyan'
+                                },
+                                ticks: {
+                                    color: 'cyan'
+                                }
                             },
-                            ticks: {
-                                color: 'cyan'
-                            }
-                        },
-                        y: {
-                            title: {
-                                display: true,
-                                text: yLabel,
-                                color: 'cyan'
-                            },
-                            ticks: {
-                                color: 'cyan'
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: yLabel,
+                                    color: 'cyan'
+                                },
+                                ticks: {
+                                    color: 'cyan'
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
 
-            // Adjust canvas height after generating the graph
-            const canvas = document.getElementById('graphCanvas');
-            canvas.style.height = '70vh'; 
-        })
-        .catch(error => console.error('Error fetching data:', error));
-}
-
+                // Adjust canvas height after generating the graph
+                const canvas = document.getElementById('graphCanvas');
+                canvas.style.height = '70vh'; 
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    }
 
     function getLabel(param) {
         switch (param) {
@@ -345,12 +330,6 @@
             default:
                 return '';
         }
-    }
-
-    function formatDateTime(dateTimeString) {
-        const date = new Date(dateTimeString);
-        const formattedDateTime = date.toLocaleString(); // Converts date to local date and time format
-        return formattedDateTime;
     }
 
     // Function to convert data URI to Blob
