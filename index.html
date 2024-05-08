@@ -122,7 +122,6 @@
         </div>
         <button id="generateGraphBtn">Generate Graph</button>
         <button id="saveGraphBtn">Save Graph Image</button>
-        <button id="sendWhatsAppBtn">Send to WhatsApp</button>
     </div>
 </div>
 
@@ -134,10 +133,9 @@
     const yParamSelect = document.getElementById('yParam');
     const generateGraphBtn = document.getElementById('generateGraphBtn');
     const saveGraphBtn = document.getElementById('saveGraphBtn');
-    const sendWhatsAppBtn = document.getElementById('sendWhatsAppBtn');
     let chartInstance = null; // Store the chart instance
 
-    fetch('https://api.thingspeak.com/channels/2540859/feeds.json?results=20')
+fetch('https://api.thingspeak.com/channels/2540859/feeds.json?results=20')
     .then(response => response.json())
     .then(data => {
         const feeds = data.feeds;
@@ -145,7 +143,7 @@
         feeds.forEach(feed => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${formatDateTime(feed.created_at)}</td>
+                <td>${feed.created_at}</td>
                 <td>${feed.field1}</td>
                 <td>${feed.field2}</td>
                 <td>${feed.field3}</td>
@@ -186,72 +184,6 @@
         link.click();
     });
 
-    sendWhatsAppBtn.addEventListener('click', () => {
-        const graphCanvas = document.getElementById('graphCanvas');
-        const imageData = graphCanvas.toDataURL(); // Convert canvas to base64 image data
-
-        const contactNumber = prompt('Please enter the WhatsApp number to send to:');
-        if (contactNumber) {
-            sendWhatsAppMessage(contactNumber, imageData);
-        }
-    });
-
-    function sendWhatsAppMessage(contactNumber, imageData) {
-        // You can use any method to send the message, 
-        // for demonstration purpose, we'll simulate the process here
-
-        // Open WhatsApp Web
-        window.open('https://web.whatsapp.com/');
-
-        // Wait for WhatsApp Web to load
-        setTimeout(() => {
-            // Select the contact by searching the number
-            const searchBox = document.querySelector('input[type="text"]');
-            searchBox.value = contactNumber;
-            searchBox.dispatchEvent(new Event('input'));
-
-            // Click on the contact to open the chat
-            const contact = document.querySelector(`span[title="${contactNumber}"]`);
-            if (contact) {
-                contact.click();
-            } else {
-                alert('Contact not found!');
-                return;
-            }
-
-            // Send the image
-            setTimeout(() => {
-                const attachmentButton = document.querySelector('div[title="Attach"]');
-                attachmentButton.click();
-
-                const imageButton = document.querySelector('input[type="file"]');
-                imageButton.value = ''; // Reset input value (in case there's a previous image)
-                imageButton.dispatchEvent(new Event('change'));
-
-                imageButton.addEventListener('change', () => {
-                    const inputWrapper = document.querySelector('div.input-wrapper');
-                    inputWrapper.querySelector('span[data-icon="send"]').click();
-                });
-
-                // Trigger the file input to open file dialog
-                imageButton.click();
-
-                // Simulate user selecting the image file
-                setTimeout(() => {
-                    const fileInput = document.querySelector('input[type="file"]');
-                    const file = dataURItoBlob(imageData);
-                    const imageFile = new File([file], 'graph.png', { type: 'image/png' });
-                    const fileList = new DataTransfer();
-                    fileList.items.add(imageFile);
-                    fileInput.files = fileList.files;
-
-                    // Dispatch the change event to trigger upload
-                    fileInput.dispatchEvent(new Event('change'));
-                }, 1000);
-            }, 2000);
-        }, 2000);
-    }
-
     function generateGraph(xParam, yParam) {
         const ctx = document.getElementById('graphCanvas').getContext('2d'); // Get 2d context
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas
@@ -267,7 +199,7 @@
                 chartInstance = new Chart(ctx, {
                     type: 'line',
                     data: {
-                        labels: feeds.map(feed => formatDateTime(feed[xParam])),
+                        labels: feeds.map(feed => feed[xParam]),
                         datasets: [{
                             label: yLabel,
                             data: feeds.map(feed => yParam !== 'field7' ? parseFloat(feed[yParam], 10) : Math.floor(Math.random() * (200 - 180 + 1)) + 180),
@@ -330,23 +262,6 @@
             default:
                 return '';
         }
-    }
-
-    function formatDateTime(dateTimeString) {
-        const date = new Date(dateTimeString);
-        const formattedDateTime = date.toLocaleString(); // Converts date to local date and time format
-        return formattedDateTime;
-    }
-
-    // Function to convert data URI to Blob
-    function dataURItoBlob(dataURI) {
-        const byteString = atob(dataURI.split(',')[1]);
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-            ia[i] = byteString.charCodeAt(i);
-        }
-        return new Blob([ab], { type: 'image/png' });
     }
 </script>
 
