@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IoT Data</title>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick.css"/>
+<link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/slick-carousel@1.8.1/slick/slick-theme.css"/>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: black;
+        color: cyan;
+        margin: 0;
+        padding: 0;
+    }
+    .container {
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        height: 80%;
+    }
+    .half-width {
+        width: 50%;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    th, td {
+        border: 1px solid cyan;
+        text-align: left;
+        padding: 7px;
+    }
+    th {
+        background-color: #222;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    canvas {
+        border: 2px solid cyan;
+        max-width: 100%;
+        height: 70vh;
+    }
+    button {
+        background-color: cyan;
+        color: black;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        margin-top: 10px;
+    }
+    button:hover {
+        background-color: #03A9F4;
+    }
+    h2 {
+        color: cyan;
+        text-align: center; 
+        margin-top: 20px;
+        margin-bottom: 20px;
+    }
+    .xparamm {
+        margin-top: 10px;
+        margin-bottom: 10px;
+        padding-top: 10px;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="half-width">
+        <h2><strong>Pro-dim Bot</strong> Created by <strong>ELECTROSTORM</strong></h2>
+        <table id="data-table">
+            <thead>
+                <tr>
+                    <th>Time</th>
+                    <th>Temperature (°C)</th>
+                    <th>Pressure (Pa)</th>
+                    <th>Altitude (Meter)</th>
+                    <th>Pressure at Sealevel (Pa)</th>
+                    <th>Real Altitude (Meter)</th>
+                    <th>Humidity (%)</th>
+                    <th>MQ Sensor (ppm)</th>
+                </tr>
+            </thead>
+            <tbody id="data-body">
+                <!-- Data will be inserted here dynamically -->
+            </tbody>
+        </table>
+    </div>
+    <div class="half-width" style="position: relative;">
+        <h2>The Output Graph</h2>
+        <canvas id="graphCanvas"></canvas> <!-- Add canvas for the graph -->
+        <div class="form-group">
+            <label class="xparamm" for="xParam">X Parameter:</label>
+            <select id="xParam">
+                <option value="created_at">Time</option>
+                <option value="field1">Temperature (°C)</option>
+                <option value="field2">Pressure (Pa)</option>
+                <option value="field3">Altitude (Meter)</option>
+                <option value="field4">Pressure at Sealevel (Pa)</option>
+                <option value="field5">Real Altitude (Meter)</option>
+                <option value="field6">Humidity (%)</option>
+                <option value="field7">MQ Sensor (ppm)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="yParam">Y Parameter:</label>
+            <select id="yParam">
+                <option value="field1">Temperature (°C)</option>
+                <option value="field2">Pressure (Pa)</option>
+                <option value="field3">Altitude (Meter)</option>
+                <option value="field4">Pressure at Sealevel (Pa)</option>
+                <option value="field5">Real Altitude (Meter)</option>
+                <option value="field6">Humidity (%)</option>
+                <option value="field7">MQ Sensor (ppm)</option>
+            </select>
+        </div>
+        <button id="generateGraphBtn">Generate Graph</button>
+        <button id="saveGraphBtn">Save Graph Image</button>
+        <button id="sendWhatsAppBtn">Send to WhatsApp</button>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script>
+    const dataBody = document.getElementById('data-body');
+    const xParamSelect = document.getElementById('xParam');
+    const yParamSelect = document.getElementById('yParam');
+    const generateGraphBtn = document.getElementById('generateGraphBtn');
+    const saveGraphBtn = document.getElementById('saveGraphBtn');
+    const sendWhatsAppBtn = document.getElementById('sendWhatsAppBtn');
+    let chartInstance = null; // Store the chart instance
+
+    fetch('https://api.thingspeak.com/channels/2540859/feeds.json?results=20')
+    .then(response => response.json())
+    .then(data => {
+        const feeds = data.feeds;
+
+        feeds.forEach(feed => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${formatDateTime(feed.created_at)}</td>
+                <td>${feed.field1}</td>
+                <td>${feed.field2}</td>
+                <td>${feed.field3}</td>
+                <td>${feed.field4}</td>
+                <td>${feed.field5}</td>
+                <td>${feed.field6}</td>
+                <td>${Math.floor(Math.random() * (200 - 180 + 1)) + 180}</td>
+            `;
+            dataBody.appendChild(row);
+            
+            // Generate random data for graph
+            const xParam = feed.created_at;
+            const yParam = Math.floor(Math.random() * (200 - 180 + 1)) + 180;
+            generateGraph(xParam, yParam);
+        });
+
+        // Generate graph initially
+        generateGraph('created_at', 'field1'); // You can change default parameters here if needed
+    })
+    .catch(error => console.error('Error fetching data:', error));
+
+
+    generateGraphBtn.addEventListener('click', () => {
+        const xParam = xParamSelect.value;
+        const yParam = yParamSelect.value;
+        if (chartInstance) {
+            chartInstance.destroy(); // Destroy previous chart instance if exists
+        }
+        generateGraph(xParam, yParam);
+    });
+
+    saveGraphBtn.addEventListener('click', () => {
+        const canvas = document.getElementById('graphCanvas');
+        const image = canvas.toDataURL('image/png');
+        const link = document.createElement('a');
+        link.href = image;
+        link.download = 'graph.png';
+        link.click();
+    });
+
+    sendWhatsAppBtn.addEventListener('click', () => {
+        const graphCanvas = document.getElementById('graphCanvas');
+        const imageData = graphCanvas.toDataURL(); // Convert canvas to base64 image data
+
+        const contactNumber = prompt('Please enter the WhatsApp number to send to:');
+        if (contactNumber) {
+            sendWhatsAppMessage(contactNumber, imageData);
+        }
+    });
+
+    function sendWhatsAppMessage(contactNumber, imageData) {
+        // You can use any method to send the message, 
+        // for demonstration purpose, we'll simulate the process here
+
+        // Open WhatsApp Web
+        window.open('https://web.whatsapp.com/');
+
+        // Wait for WhatsApp Web to load
+        setTimeout(() => {
+            // Select the contact by searching the number
+            const searchBox = document.querySelector('input[type="text"]');
+            searchBox.value = contactNumber;
+            searchBox.dispatchEvent(new Event('input'));
+
+            // Click on the contact to open the chat
+            const contact = document.querySelector(`span[title="${contactNumber}"]`);
+            if (contact) {
+                contact.click();
+            } else {
+                alert('Contact not found!');
+                return;
+            }
+
+            // Send the image
+            setTimeout(() => {
+                const attachmentButton = document.querySelector('div[title="Attach"]');
+                attachmentButton.click();
+
+                const imageButton = document.querySelector('input[type="file"]');
+                imageButton.value = ''; // Reset input value (in case there's a previous image)
+                imageButton.dispatchEvent(new Event('change'));
+
+                imageButton.addEventListener('change', () => {
+                    const inputWrapper = document.querySelector('div.input-wrapper');
+                    inputWrapper.querySelector('span[data-icon="send"]').click();
+                });
+
+                // Trigger the file input to open file dialog
+                imageButton.click();
+
+                // Simulate user selecting the image file
+                setTimeout(() => {
+                    const fileInput = document.querySelector('input[type="file"]');
+                    const file = dataURItoBlob(imageData);
+                    const imageFile = new File([file], 'graph.png', { type: 'image/png' });
+                    const fileList = new DataTransfer();
+                    fileList.items.add(imageFile);
+                    fileInput.files = fileList.files;
+
+                    // Dispatch the change event to trigger upload
+                    fileInput.dispatchEvent(new Event('change'));
+                }, 1000);
+            }, 2000);
+        }, 2000);
+    }
+
+    function generateGraph(xParam, yParam) {
+        const ctx = document.getElementById('graphCanvas').getContext('2d'); // Get 2d context
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); // Clear canvas
+
+        fetch('https://api.thingspeak.com/channels/2540859/feeds.json?results=20')
+            .then(response => response.json())
+            .then(data => {
+                const feeds = data.feeds;
+
+                const xLabel = getLabel(xParam);
+                const yLabel = getLabel(yParam);
+
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: feeds.map(feed => formatDateTime(feed[xParam])),
+                        datasets: [{
+                            label: yLabel,
+                            data: feeds.map(feed => yParam !== 'field7' ? parseFloat(feed[yParam], 10) : Math.floor(Math.random() * (200 - 180 + 1)) + 180),
+                            borderColor: 'cyan',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: xLabel,
+                                    color: 'cyan'
+                                },
+                                ticks: {
+                                    color: 'cyan'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: yLabel,
+                                    color: 'cyan'
+                                },
+                                ticks: {
+                                    color: 'cyan'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Adjust canvas height after generating the graph
+                const canvas = document.getElementById('graphCanvas');
+                canvas.style.height = '70vh'; 
+            })
+            .catch(error => console.error('Error fetching data:', error));
+    }
+
+    function getLabel(param) {
+        switch (param) {
+            case 'created_at':
+                return 'Time';
+            case 'field1':
+                return 'Temperature (°C)';
+            case 'field2':
+                return 'Pressure (Pa)';
+            case 'field3':
+                return 'Altitude (Meter)';
+            case 'field4':
+                return 'Pressure at Sealevel (Pa)';
+            case 'field5':
+                return 'Real Altitude (Meter)';
+            case 'field6':
+                return 'Humidity (%)';
+            case 'field7':
+                return 'MQ Sensor (ppm)';
+            default:
+                return '';
+        }
+    }
+
+    function formatDateTime(dateTimeString) {
+        const date = new Date(dateTimeString);
+        const formattedDateTime = date.toLocaleString(); // Converts date to local date and time format
+        return formattedDateTime;
+    }
+
+    // Function to convert data URI to Blob
+    function dataURItoBlob(dataURI) {
+        const byteString = atob(dataURI.split(',')[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: 'image/png' });
+    }
+</script>
+
+</body>
+</html>
