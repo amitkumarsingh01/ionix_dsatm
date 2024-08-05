@@ -3,3 +3,5 @@ Harnessing the power of linear actuators and real-time image processing using ra
 
 # Result
 ![PXL_20240509_073653142](https://github.com/itheaks/ionix_dsatm/assets/134759689/18de2459-9374-4a73-9a20-6832c6beb836)
+
+## More photos and videos of working are in Demo folder
